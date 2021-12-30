@@ -132,7 +132,7 @@ def add_photos(post_id: int, db: Session = Depends(get_db), current_user: models
     return {"file_name": "Good"}
 
 
-@app.post("/post_list/", tags=['Post'])
+@app.get("/post_list/", tags=['Post'])
 def post_list(db: Session = Depends(get_db)):
     return crud.post_list(db=db)
 
