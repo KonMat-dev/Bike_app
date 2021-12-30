@@ -1,1 +1,1 @@
-web: gunicorn -w 4 -k uvicorn.workers.UvicornWorker bike_app.main:app
+web: gunicorn -w 4 -k uvicorn.workers.UvicornWorker Bike_app_v2.main:app
