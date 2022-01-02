@@ -65,8 +65,13 @@ async def login_for_access_token(db: Session = Depends(get_db), form_data: OAuth
 
 
 @app.get("/users/me/", tags=['User'])
-async def read_users_me(current_user: models.User = Depends(get_current_user)):
-    return current_user
+async def read_users_me(current_user: models.User = Depends(get_current_user), db: Session = Depends(get_db)):
+    return db.query(models.User.id, models.User.username, models.User.description, models.User.email,
+                    models.User.url, models.User.address_city, models.User.address_province,
+                    models.User.address_street, models.User.address_number, models.User.created_date
+                    ).filter(
+        models.User.id == current_user.id).first()
+
 
 
 @app.post("/users/", tags=['User'])
