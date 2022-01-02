@@ -29,6 +29,20 @@ class UserCreate(User):
     address_city: str
     address_street: str
     address_number: str
+    firstName: str
+    lastName: str
+    phone: str
+
+
+class UserUpdate(BaseModel):
+    email: str
+    address_province: str
+    address_city: str
+    address_street: str
+    address_number: str
+    firstName: str
+    lastName: str
+    phone: str
 
 
 class PostBase(BaseModel):

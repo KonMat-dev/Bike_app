@@ -10,8 +10,11 @@ class User(Base):
 
     id = Column(Integer, primary_key=True, index=True)
     username = Column(String, unique=True)
-    # firstName = Column(String)
-    # lastName = Column(String)
+
+    firstName = Column(String)
+    lastName = Column(String)
+    phone = Column(String)
+
     description = Column(String)
     hashed_password = Column(String)
     email = Column(String)
@@ -45,6 +48,9 @@ class Post(Base):
     address_number = Column(String)
     price = Column(Float)
     category_of_bike = Column(String)
+
+    swapObject = Column(Boolean)
+    rentalPeriod = Column(Float)
 
     owner_id = Column(Integer, ForeignKey("user.id"))
 

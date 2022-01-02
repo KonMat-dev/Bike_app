@@ -36,7 +36,18 @@ def get_user_by_id(db, user_id: int):
 
 
 def create_user(db: Session, user: schemas.UserCreate):
-    db_user = models.User(username=user.username, hashed_password=get_password_hash(user.password))
+
+    exists = db.query(models.User).filter(models.User.username == user.username).first() is not None
+    if exists:
+        return "Użytkownik o takim niku już istnieje "
+
+    db_user = models.User(username=user.username, hashed_password=get_password_hash(user.password),
+                          lastName=user.lastName, firstName=user.firstName, phone=user.phone,
+                          address_number=user.address_number, address_street=user.address_street,
+                          address_province=user.address_province,
+                          address_city=user.address_city
+                          )
+
     db.add(db_user)
     db.commit()
     db.refresh(db_user)
@@ -65,11 +76,12 @@ def create_access_token(data: dict, expires_delta: Optional[timedelta] = None):
 
 def create_post(db: Session, user_id: int, price: float, title: str, description: str, url: str, tape_of_service: str,
                 category_of_bike: str, address_city: str, address_number: str, address_province: str,
+                swapObject: bool, rentalPeriod: float,
                 address_street: str):
     db_post = models.Post(title=title, description=description, owner_id=user_id, url=url,
                           tape_of_service=tape_of_service, category_of_bike=category_of_bike, price=price,
                           address_street=address_street, address_city=address_city, address_number=address_number,
-                          address_province=address_province)
+                          address_province=address_province, swapObject=swapObject, rentalPeriod=rentalPeriod)
 
     db.add(db_post)
     db.commit()
@@ -101,27 +113,33 @@ def search_post(db, title: Optional[str] = None, tape_of_service: Optional[str] 
                 category_of_bike: Optional[str] = None, min_price: Optional[float] = None,
                 max_price: Optional[float] = None,
                 address_province: Optional[float] = None,
+                swapObject: Optional[bool] = None,
+                rentalPeriod: Optional[float] = None,
                 ):
     search = db.query(models.Post).distinct(Post.id)
 
     if title is not None:
-        search = search.filter(models.Post.title == title)
+        search = search.filter(models.Post.title.ilike(f'%{title}%'))
 
     if tape_of_service is not None:
         search = search.filter(models.Post.tape_of_service == tape_of_service)
     if category_of_bike is not None:
-        search = search.filter(models.Post.category_of_bike == category_of_bike)
+        search = search.filter(models.Post.category_of_bike.ilike(f'%{category_of_bike}%'))
     if address_province is not None:
         search = search.filter(models.Post.address_province == address_province)
     if min_price is not None:
         search = search.filter(models.Post.price >= min_price)
     if max_price is not None:
         search = search.filter(Post.price <= max_price)
+    if swapObject is not None:
+        search = search.filter(models.Post.swapObject == swapObject)
+    if rentalPeriod is not None:
+        search = search.filter(models.Post.rentalPeriod == rentalPeriod)
 
     return search.all()
 
 
-def create_comment(db: Session,creator_id:int, user_id: int, mark: int, comment: schemas.Comments):
+def create_comment(db: Session, creator_id: int, user_id: int, mark: int, comment: schemas.Comments):
     if mark > 11:
         return " Ocena może być wprowadzona z zakresu o 1 do 10"
     db_comment = models.Comment(creator_id=creator_id, owner_id=user_id, mark=mark, **comment.dict())
@@ -129,6 +147,10 @@ def create_comment(db: Session,creator_id:int, user_id: int, mark: int, comment:
     db.commit()
     db.refresh(db_comment)
     return db_comment
+
+
+def get_user_posts(db, user_id: int):
+    return db.query(models.Post).filter(models.Comment.owner_id == user_id).all()
 
 
 def add_new_photos(db: Session, comment_id: int, photo_url: str):
