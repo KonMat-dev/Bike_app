@@ -77,9 +77,13 @@ async def read_users_me(current_user: models.User = Depends(get_current_user), d
 
 @app.post("/users/", tags=['User'])
 def create_user(
-        user: schemas.UserCreate, db: Session = Depends(get_db)
+        user: schemas.UserCreate, file: UploadFile = File([]), db: Session = Depends(get_db)
 ):
-    return crud.create_user(db=db, user=user)
+    with open("photo/" + file.filename, "wb+")as img:
+        shutil.copyfileobj(file.file, img)
+    url = str("photo/" + file.filename)
+
+    return crud.create_user(db=db, user=user, url=url)
 
 
 # @app.put("/user_update/{user_id}", tags=['User'])
@@ -95,7 +99,7 @@ def create_user(
 #     return True
 
 
-@app.patch("/update",  tags=['User'])
+@app.patch("/update_user/", tags=['User'])
 async def update_profile(data: schemas.UserUpdate, current_user: models.User = Depends(get_current_user),
                          db: Session = Depends(get_db)):
     user = db.query(models.User).filter(models.User.id == current_user.id).first()
@@ -118,7 +122,6 @@ async def update_profile(data: schemas.UserUpdate, current_user: models.User = D
         user.lastName = data.lastName
     if data.description != 'string':
         user.description = data.description
-
 
     db.commit()
     return user
@@ -198,7 +201,7 @@ def post_detail(post_id: int, db: Session = Depends(get_db)):
     return {"Post Details": post, "Post Photo": post_photo}
 
 
-@app.put("/post/{post_id}", tags=['Post'])
+@app.patch("/post/{post_id}", tags=['Post'])
 def update(post_id: int, request: schemas.PostBase, db: Session = Depends(get_db),
            current_user: models.User = Depends(get_current_user)):
     exists = db.query(models.Post).filter(models.Post.id == post_id).first() is not None
@@ -210,7 +213,26 @@ def update(post_id: int, request: schemas.PostBase, db: Session = Depends(get_db
             models.Post.id == post_id, models.Post.owner_id != current_user.id)).first():
         return "Nie możesz edytować czyjegoś posta"
 
-    db.query(models.Post).filter(models.Post.id == post_id).update(request.dict())
+    post = db.query(models.Post).filter(models.Post.id == post_id).first()
+
+    if request.title != 'string':
+        post.title = request.title
+    if request.description != 'string':
+        post.description = request.description
+    if request.tape_of_service != 'string':
+        post.tape_of_service = request.tape_of_service
+    if request.address_province != 'string':
+        post.address_province = request.address_province
+    if request.address_city != 'string':
+        post.address_city = request.address_city
+    if request.address_street != 'string':
+        post.address_street = request.address_street
+    if request.address_number != 'string':
+        post.address_number = request.address_number
+    if request.price != 'string':
+        post.price = request.price
+    if request.category_of_bike != 'string':
+        post.category_of_bike = request.category_of_bike
     db.commit()
     return "Post updated "
 
@@ -239,9 +261,15 @@ def user_post(db: Session = Depends(get_db), current_user: models.User = Depends
 
 
 @app.get("/user/{user_id}", tags=['User'])
-def user_post(user_id: int, db: Session = Depends(get_db)):
+def user_details(user_id: int, db: Session = Depends(get_db)):
+
+    exists = db.query(models.User).filter(models.User.id == user_id).first() is not None
+    if not exists:
+        return "Nie istnieje użytkownik o takim id"
+
     user = crud.get_user_by_id(db=db, user_id=user_id)
-    return user
+    mark = crud.str_mark(db=db, user_id=user_id)
+    return {'User info': user, 'Mark info': mark}
 
 
 @app.post("/search_post/", tags=['Post'])
@@ -269,7 +297,8 @@ def create_comment(user_id: int, mark: int, comment: schemas.Comments,
     if user_id == current_user.id:
         return "Nie możesz oceniać własnego profilu"
 
-    return crud.create_comment(db=db, creator_id=current_user.id, user_id=user_id, comment=comment, mark=mark)
+    return crud.create_comment(db=db, creator_id=current_user.id, user_id=user_id, email=current_user.email,
+                               comment=comment, mark=mark)
 
 
 @app.post("/user_comments/{user_id}", tags=['User'])
@@ -284,11 +313,10 @@ def comment_detail(user_id: int, db: Session = Depends(get_db), current_user: mo
     return {"user": user, "comment": active_comment}
 
 
-@app.put("/comment_update/{comment_id}", tags=['Comment'])
+@app.patch("/comment_update/{comment_id}", tags=['Comment'])
 def update(comment_id: int, request: schemas.CommentsUpdate, db: Session = Depends(get_db),
            current_user: models.User = Depends(get_current_user)):
     exists = db.query(models.Comment).filter(models.Comment.id == comment_id).first() is not None
-    print(str(exists))
 
     if not exists:
         return "Zły numer id "
@@ -298,7 +326,18 @@ def update(comment_id: int, request: schemas.CommentsUpdate, db: Session = Depen
             models.Comment.creator_id != current_user.id)).first():
         return "Nie możesz edytować czyjegoś komentarza"
 
-    db.query(models.Comment).filter(models.Comment.id == comment_id).update(request.dict())
+    comment = db.query(models.Comment).filter(models.Comment.id == comment_id).first()
+
+    if request.name != 'string':
+        comment.name = request.name
+    if request.description != 'string':
+        comment.description = request.description
+    if request.mark != 0:
+        if request.mark >= 0 and request.mark <= 5:
+            comment.mark = request.mark
+        else:
+            return 'Ocena moze być z przedziału 0 do 5 '
+
     db.commit()
     return "Comment updated "
 
@@ -325,9 +364,9 @@ def destroy(comment_id: int, db: Session = Depends(get_db), current_user: models
     return "Comment has been deleated "
 
 
-@app.get("/user_comments/{user_id}", tags=['Comment'])
-def user_comments(user_id: int, db: Session = Depends(get_db)):
-    user = crud.get_user_posts(db=db, user_id=user_id)
+@app.get("/user_comments/{user_id}", tags=['Mark'])
+def get_mark(user_id: int, db: Session = Depends(get_db)):
+    user = crud.str_mark(db=db, user_id=user_id)
     return user
 
 

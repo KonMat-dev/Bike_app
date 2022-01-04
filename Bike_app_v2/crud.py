@@ -35,7 +35,7 @@ def get_user_by_id(db, user_id: int):
     return db.query(models.User).filter(models.User.id == user_id).first()
 
 
-def create_user(db: Session, user: schemas.UserCreate):
+def create_user(db: Session, user: schemas.UserCreate, url: str):
     exists = db.query(models.User).filter(models.User.username == user.username).first() is not None
     if exists:
         return "Użytkownik o takim niku już istnieje "
@@ -44,7 +44,7 @@ def create_user(db: Session, user: schemas.UserCreate):
                           lastName=user.lastName, firstName=user.firstName, phone=user.phone,
                           address_number=user.address_number, address_street=user.address_street,
                           address_province=user.address_province,
-                          address_city=user.address_city
+                          address_city=user.address_city, url=url
                           )
 
     db.add(db_user)
@@ -138,10 +138,10 @@ def search_post(db, title: Optional[str] = None, tape_of_service: Optional[str] 
     return search.all()
 
 
-def create_comment(db: Session, creator_id: int, user_id: int, mark: int, comment: schemas.Comments):
-    if mark > 11:
-        return " Ocena może być wprowadzona z zakresu o 1 do 10"
-    db_comment = models.Comment(creator_id=creator_id, owner_id=user_id, mark=mark, **comment.dict())
+def create_comment(db: Session, creator_id: int, email: str, user_id: int, mark: int, comment: schemas.Comments):
+    if mark >= 6 or mark < 0:
+        return " Ocena może być wprowadzona z zakresu o 0 do 5"
+    db_comment = models.Comment(creator_id=creator_id, owner_id=user_id, mark=mark, email=email, **comment.dict())
     db.add(db_comment)
     db.commit()
     db.refresh(db_comment)
@@ -150,6 +150,39 @@ def create_comment(db: Session, creator_id: int, user_id: int, mark: int, commen
 
 def get_user_posts(db, user_id: int):
     return db.query(models.Post).filter(models.Comment.owner_id == user_id).all()
+
+
+def get_user_comment(db, user_id: int):
+    return db.query(models.Comment).filter(models.Comment.owner_id == user_id).all()
+
+
+def str_mark(db, user_id: int):
+    average_mark = 0
+    row_number = 0
+
+    comments = db.query(models.Comment).filter(models.Comment.owner_id == user_id).all()
+
+    for row in comments:
+        average_mark = average_mark + row.mark
+        row_number = row_number + 1
+
+    if row_number <= 0:
+        return 'Brak opini o użytkowniku'
+
+    value = average_mark / row_number
+
+    if value < 1:
+        return {'int_mark': value, 'str_mark': 'Większości negatywne'}
+    if value < 2:
+        return {'int_mark': value, 'str_mark': 'negatywne'}
+    if value < 3:
+        return {'int_mark': value, 'str_mark': 'Umiarkowane'}
+    if value < 4:
+        return {'int_mark': value, 'str_mark': 'Pozytywne'}
+    if value < 5:
+        return {'int_mark': value, 'str_mark': 'Godny polecenia'}
+
+    return 'test'
 
 
 def add_new_photos(db: Session, comment_id: int, photo_url: str):

@@ -32,7 +32,7 @@ class UserCreate(User):
     firstName: str
     lastName: str
     phone: str
-
+    url: Optional[str]
 
 class UserUpdate(BaseModel):
     email: Optional[str]
@@ -69,7 +69,6 @@ class PostList(PostBase):
 
 class Comments(BaseModel):
     name: str
-    email: str
     description: str
 
 
