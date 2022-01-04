@@ -35,14 +35,15 @@ class UserCreate(User):
 
 
 class UserUpdate(BaseModel):
-    email: str
-    address_province: str
-    address_city: str
-    address_street: str
-    address_number: str
-    firstName: str
-    lastName: str
-    phone: str
+    email: Optional[str]
+    address_province: Optional[str]
+    address_city: Optional[str]
+    address_street: Optional[str]
+    address_number: Optional[str]
+    firstName: Optional[str]
+    lastName: Optional[str]
+    phone: Optional[str]
+    description: Optional[str]
 
 
 class PostBase(BaseModel):

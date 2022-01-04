@@ -36,7 +36,6 @@ def get_user_by_id(db, user_id: int):
 
 
 def create_user(db: Session, user: schemas.UserCreate):
-
     exists = db.query(models.User).filter(models.User.username == user.username).first() is not None
     if exists:
         return "Użytkownik o takim niku już istnieje "

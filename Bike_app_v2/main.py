@@ -5,6 +5,7 @@ from typing import Optional, List
 from fastapi import Depends, FastAPI, HTTPException, status, UploadFile, File
 from fastapi.security import OAuth2PasswordBearer, OAuth2PasswordRequestForm
 from jose import JWTError, jwt
+from rest_framework.status import HTTP_200_OK
 from sqlalchemy import and_
 from sqlalchemy.orm import Session
 
@@ -78,16 +79,49 @@ async def read_users_me(current_user: models.User = Depends(get_current_user), d
 def create_user(
         user: schemas.UserCreate, db: Session = Depends(get_db)
 ):
-
     return crud.create_user(db=db, user=user)
 
 
-@app.put("/user_update/", tags=['User'])
-def update(request: schemas.UserUpdate, db: Session = Depends(get_db),
-           current_user: models.User = Depends(get_current_user)):
-    db.query(models.User).filter(models.User.id == current_user.id).update(request.dict())
+# @app.put("/user_update/{user_id}", tags=['User'])
+# def update(user_id: int, request: schemas.UserUpdate, db: Session = Depends(get_db),
+#            current_user: models.User = Depends(get_current_user)):
+#     user_up = db.query(models.User).filter(models.User.id == current_user.id).first()
+#
+#     if request.phone != 'string':
+#         models.User.phone = request.phone
+#         print('telefon' + request.phone)
+#
+#     db.commit()
+#     return True
+
+
+@app.patch("/update",  tags=['User'])
+async def update_profile(data: schemas.UserUpdate, current_user: models.User = Depends(get_current_user),
+                         db: Session = Depends(get_db)):
+    user = db.query(models.User).filter(models.User.id == current_user.id).first()
+
+    if data.phone != 'string':
+        user.phone = data.phone
+    if data.email != 'string':
+        user.email = data.email
+    if data.address_province != 'string':
+        user.address_province = data.address_province
+    if data.address_city != 'string':
+        user.address_city = data.address_city
+    if data.address_street != 'string':
+        user.address_street = data.address_street
+    if data.address_number != 'string':
+        user.address_number = data.address_number
+    if data.firstName != 'string':
+        user.firstName = data.firstName
+    if data.lastName != 'string':
+        user.lastName = data.lastName
+    if data.description != 'string':
+        user.description = data.description
+
+
     db.commit()
-    return "User updated "
+    return user
 
 
 @app.post("/posts/", tags=['Post'])
