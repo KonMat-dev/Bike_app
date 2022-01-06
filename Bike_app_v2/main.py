@@ -12,6 +12,13 @@ from sqlalchemy.orm import Session
 from Bike_app_v2 import crud, schemas, models
 from Bike_app_v2.database import SessionLocal, engine, Base
 
+
+
+from fastapi import FastAPI, BackgroundTasks, UploadFile, File, Form
+from starlette.responses import JSONResponse
+from typing import List
+
+
 Base.metadata.create_all(bind=engine)
 
 app = FastAPI()
@@ -262,7 +269,6 @@ def user_post(db: Session = Depends(get_db), current_user: models.User = Depends
 
 @app.get("/user/{user_id}", tags=['User'])
 def user_details(user_id: int, db: Session = Depends(get_db)):
-
     exists = db.query(models.User).filter(models.User.id == user_id).first() is not None
     if not exists:
         return "Nie istnieje użytkownik o takim id"
@@ -373,3 +379,4 @@ def get_mark(user_id: int, db: Session = Depends(get_db)):
 @app.post("/photos/")
 def all_photos(db: Session = Depends(get_db)):
     return db.query(models.Photo).all()
+

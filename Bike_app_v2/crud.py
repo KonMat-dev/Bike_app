@@ -191,3 +191,5 @@ def add_new_photos(db: Session, comment_id: int, photo_url: str):
     db.commit()
     db.refresh(db_photos)
     return db_photos
+
+
