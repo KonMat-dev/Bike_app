@@ -390,6 +390,7 @@ def all_photos(db: Session = Depends(get_db)):
 @app.post("/email/{to_mail}")
 async def send_email(to_mail: str, db: Session = Depends(get_db)):
     user_id_by_email = db.query(models.User).filter(models.User.email == to_mail).first()
+
     user = crud.get_user_by_id(db, user_id=user_id_by_email.id)
 
     reset_code = str(uuid.uuid1())
