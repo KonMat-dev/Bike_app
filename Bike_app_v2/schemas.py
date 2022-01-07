@@ -32,7 +32,8 @@ class UserCreate(User):
     firstName: str
     lastName: str
     phone: str
-    url: Optional[str]
+    #url: Optional[str]
+
 
 class UserUpdate(BaseModel):
     email: Optional[str]
@@ -87,3 +88,12 @@ class CommentsList(Comments):
 
     class Config:
         orm_mode = True
+
+
+class Reset_password(BaseModel):
+    reset_password_token: str
+    new_password: str
+    confirm_password: str
+
+class Forgot_pass(BaseModel):
+    email: str

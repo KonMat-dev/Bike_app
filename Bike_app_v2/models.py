@@ -82,3 +82,12 @@ class Photo(Base):
     photo_url = Column(String)
 
     img_rel = relationship("Post", back_populates="img_rel")
+
+
+class Code(Base):
+    __tablename__ = "code"
+    id = Column(Integer, primary_key=True)
+    email = Column(String)
+    reset_code = Column(String)
+    status = Column(String)
+    expired_in = Column(DateTime)

@@ -8,20 +8,37 @@ from jose import JWTError, jwt
 from rest_framework.status import HTTP_200_OK
 from sqlalchemy import and_
 from sqlalchemy.orm import Session
+from fastapi.staticfiles import StaticFiles
 
 from Bike_app_v2 import crud, schemas, models
 from Bike_app_v2.database import SessionLocal, engine, Base
 
-
-
-from fastapi import FastAPI, BackgroundTasks, UploadFile, File, Form
 from starlette.responses import JSONResponse
+from starlette.requests import Request
+from fastapi_mail import FastMail, MessageSchema, ConnectionConfig
+from pydantic import EmailStr, BaseModel
 from typing import List
+from fastapi_mail.email_utils import DefaultChecker
+import uuid
 
+conf = ConnectionConfig(
+    MAIL_USERNAME="konrad.matuszewski.98@gmail.com",
+    MAIL_PASSWORD="Qaswqasw123",
+    MAIL_FROM="konrad.matuszewski.98@gmail.com",
+    MAIL_PORT=587,
+    MAIL_SERVER="smtp.gmail.com",
+    MAIL_FROM_NAME="Desired Name",
+    MAIL_TLS=True,
+    MAIL_SSL=False,
+    USE_CREDENTIALS=True,
+    VALIDATE_CERTS=True
+)
 
 Base.metadata.create_all(bind=engine)
 
 app = FastAPI()
+
+app.mount("/photo", StaticFiles(directory="photo"), name="static")
 
 ACCESS_TOKEN_EXPIRE_MINUTES = 30
 oauth2_scheme = OAuth2PasswordBearer(tokenUrl="token")
@@ -84,26 +101,9 @@ async def read_users_me(current_user: models.User = Depends(get_current_user), d
 
 @app.post("/users/", tags=['User'])
 def create_user(
-        user: schemas.UserCreate, file: UploadFile = File([]), db: Session = Depends(get_db)
+        user: schemas.UserCreate, db: Session = Depends(get_db)
 ):
-    with open("photo/" + file.filename, "wb+")as img:
-        shutil.copyfileobj(file.file, img)
-    url = str("photo/" + file.filename)
-
-    return crud.create_user(db=db, user=user, url=url)
-
-
-# @app.put("/user_update/{user_id}", tags=['User'])
-# def update(user_id: int, request: schemas.UserUpdate, db: Session = Depends(get_db),
-#            current_user: models.User = Depends(get_current_user)):
-#     user_up = db.query(models.User).filter(models.User.id == current_user.id).first()
-#
-#     if request.phone != 'string':
-#         models.User.phone = request.phone
-#         print('telefon' + request.phone)
-#
-#     db.commit()
-#     return True
+    return crud.create_user(db=db, user=user)
 
 
 @app.patch("/update_user/", tags=['User'])
@@ -156,7 +156,7 @@ def create_post(
     if rentalPeriod == None and price == None and swapObject == None:
         return " Proszę wybrać formę transakcji"
 
-    with open("photo/" + file.filename, "wb+")as img:
+    with open("photo/" + file.filename, "wb+") as img:
         shutil.copyfileobj(file.file, img)
     url = str("photo/" + file.filename)
 
@@ -379,4 +379,59 @@ def get_mark(user_id: int, db: Session = Depends(get_db)):
 @app.post("/photos/")
 def all_photos(db: Session = Depends(get_db)):
     return db.query(models.Photo).all()
+
+
+@app.post("/email/{to_mail}")
+async def send_email(to_mail: str,  db: Session = Depends(get_db)):
+
+    user_id_by_email = db.query(models.User).filter(models.User.email == to_mail).first()
+    user = crud.get_user_by_id(db, user_id=user_id_by_email.id)
+
+    reset_code = str(uuid.uuid1())
+
+    crud.create_reset_code(db, to_mail, reset_code)
+
+    html = f"""
+    <p></p>
+    <p>Przypomnienie twojego hasla</p>
+    <p>Uzytkowniku {user.username}<p>
+    <p> dostaliśy prośbę o resetowanie towejgo hasła do naszego portalu poniżej otrzymasz cod to restaru swojego konta</p>
+    <p> Kod resetujący hasło: {reset_code} </p>
+
+    <br>test<br>
+    """
+
+    message = MessageSchema(
+        subject="Przypomninie hasla",
+        recipients=[to_mail],  # List of recipients, as many as you can pass
+        body=html,
+        subtype="html"
+    )
+
+    fm = FastMail(conf)
+    await fm.send_message(message)
+    return {'Status': 'Chyba poszlo', 'Reset coede': reset_code}
+
+
+@app.post("/code/")
+def code(db: Session = Depends(get_db)):
+    return db.query(models.Code).all()
+
+
+@app.patch("/reset_password/")
+async def reset(request: schemas.Reset_password, db: Session = Depends(get_db)):
+    reset_token = crud.check_password(db=db, reset_password_token=request.reset_password_token)
+    email_for_this_token = db.query(models.Code).filter(models.Code.reset_code == request.reset_password_token).first()
+    if reset_token == None:
+        return ('Error')
+
+    if request.new_password != request.confirm_password:
+        return ("Hasła są różne")
+
+    # forgot_pass = schemas.Forgot_pass(reset_token)
+    new_hash_pas = crud.get_password_hash(request.new_password)
+    crud.reset_password(db=db, new_hash_pas=new_hash_pas, email=email_for_this_token.email)
+
+    return 'Sukces'
+
 

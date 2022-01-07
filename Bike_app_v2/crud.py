@@ -35,16 +35,20 @@ def get_user_by_id(db, user_id: int):
     return db.query(models.User).filter(models.User.id == user_id).first()
 
 
-def create_user(db: Session, user: schemas.UserCreate, url: str):
+def create_user(db: Session, user: schemas.UserCreate):
     exists = db.query(models.User).filter(models.User.username == user.username).first() is not None
     if exists:
         return "Użytkownik o takim niku już istnieje "
 
+    exists_email = db.query(models.User).filter(models.User.email == user.email).first() is not None
+    if exists_email:
+        return "Użytkownik o takim email już istnieje "
+
     db_user = models.User(username=user.username, hashed_password=get_password_hash(user.password),
                           lastName=user.lastName, firstName=user.firstName, phone=user.phone,
                           address_number=user.address_number, address_street=user.address_street,
-                          address_province=user.address_province,
-                          address_city=user.address_city, url=url
+                          address_province=user.address_province, email=user.email,
+                          address_city=user.address_city
                           )
 
     db.add(db_user)
@@ -193,3 +197,35 @@ def add_new_photos(db: Session, comment_id: int, photo_url: str):
     return db_photos
 
 
+def create_reset_code(db: Session, email: str, reset_code: str):
+    code = models.Code(email=email, reset_code=reset_code, status=1, expired_in=datetime.now())
+    db.add(code)
+    db.commit()
+    db.refresh(code)
+    return code
+
+
+def check_password(db: Session, reset_password_token: str):
+    sql_query = db.query(models.Code).filter(
+        models.Code.status == 1,
+        models.Code.reset_code == reset_password_token  # TODO ważnośc tokenu
+    ).first()
+    return sql_query
+
+
+def reset_password(db: Session, new_hash_pas: str, email: str):
+    user = db.query(models.User).filter(models.User.email == email).first()
+
+    print('request email', email)
+    print('email', user.email)
+    print('nowe haslo', str(new_hash_pas))
+    print('stare haslo', str(user.hashed_password))
+    print('username', str(user.username))
+    print('city', str(user.address_city))
+
+    user.hashed_password = new_hash_pas
+    user.address_city = "test dodania adresu"
+
+    db.commit()
+    db.refresh(user)
+    return user

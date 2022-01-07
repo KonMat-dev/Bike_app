@@ -17,10 +17,10 @@ depends_on = None
 
 
 def upgrade():
-    op.add_column(
-        'posts',
-        sa.Column('url', sa.String(200))
-    )
+    # op.add_column(
+    #     'posts',
+    #     sa.Column('url', sa.String(200))
+    # )
     pass
 
 
