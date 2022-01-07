@@ -267,7 +267,7 @@ def destroy(post_id: int, db: Session = Depends(get_db), current_user: models.Us
     return "Post ha been deleated "
 
 
-@app.post("/user_posts/", tags=['Post'])
+@app.get("/user_posts/", tags=['Post'])
 def user_post(db: Session = Depends(get_db), current_user: models.User = Depends(get_current_user)):
     user_posts = crud.get_user_post(db=db, user_id=current_user.id)
     return user_posts
@@ -389,6 +389,14 @@ def all_photos(db: Session = Depends(get_db)):
 
 @app.post("/email/{to_mail}")
 async def send_email(to_mail: str, db: Session = Depends(get_db)):
+
+    exists = db.query(models.User).filter(models.User.email == to_mail).first() is not None
+
+    print(str(exists))
+
+    if exists == False:
+        return "Taki email nie istnieje w naszej bazie danych "
+
     user_id_by_email = db.query(models.User).filter(models.User.email == to_mail).first()
 
     user = crud.get_user_by_id(db, user_id=user_id_by_email.id)
@@ -426,6 +434,7 @@ def code(db: Session = Depends(get_db)):
 
 @app.patch("/reset_password/")
 async def reset(request: schemas.Reset_password, db: Session = Depends(get_db)):
+
     reset_token = crud.check_password(db=db, reset_password_token=request.reset_password_token)
     email_for_this_token = db.query(models.Code).filter(models.Code.reset_code == request.reset_password_token).first()
     if reset_token == None:
