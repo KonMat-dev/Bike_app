@@ -21,6 +21,11 @@ from typing import List
 from fastapi_mail.email_utils import DefaultChecker
 import uuid
 
+from starlette.applications import Starlette
+from starlette.routing import Mount
+from starlette.staticfiles import StaticFiles
+
+
 conf = ConnectionConfig(
     MAIL_USERNAME="konrad.matuszewski.98@gmail.com",
     MAIL_PASSWORD="Qaswqasw123",
@@ -36,9 +41,10 @@ conf = ConnectionConfig(
 
 Base.metadata.create_all(bind=engine)
 
+
 app = FastAPI()
 
-app.mount("/photo", StaticFiles(directory="photo"), name="static")
+app.mount("/photo", StaticFiles(directory="photo"), name="photo")
 
 ACCESS_TOKEN_EXPIRE_MINUTES = 30
 oauth2_scheme = OAuth2PasswordBearer(tokenUrl="token")
@@ -382,8 +388,7 @@ def all_photos(db: Session = Depends(get_db)):
 
 
 @app.post("/email/{to_mail}")
-async def send_email(to_mail: str,  db: Session = Depends(get_db)):
-
+async def send_email(to_mail: str, db: Session = Depends(get_db)):
     user_id_by_email = db.query(models.User).filter(models.User.email == to_mail).first()
     user = crud.get_user_by_id(db, user_id=user_id_by_email.id)
 
@@ -433,5 +438,3 @@ async def reset(request: schemas.Reset_password, db: Session = Depends(get_db)):
     crud.reset_password(db=db, new_hash_pas=new_hash_pas, email=email_for_this_token.email)
 
     return 'Sukces'
-
-
