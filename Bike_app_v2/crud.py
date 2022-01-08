@@ -79,7 +79,7 @@ def create_access_token(data: dict, expires_delta: Optional[timedelta] = None):
 
 def create_post(db: Session, user_id: int, price: float, title: str, description: str, url: str, tape_of_service: str,
                 category_of_bike: str, address_city: str, address_number: str, address_province: str,
-                swapObject: bool, rentalPeriod: float,
+                swapObject: str, rentalPeriod: float,
                 address_street: str):
     db_post = models.Post(title=title, description=description, owner_id=user_id, url=url,
                           tape_of_service=tape_of_service, category_of_bike=category_of_bike, price=price,

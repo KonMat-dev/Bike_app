@@ -32,7 +32,6 @@ class UserCreate(User):
     firstName: str
     lastName: str
     phone: str
-    #url: Optional[str]
 
 
 class UserUpdate(BaseModel):
@@ -56,6 +55,8 @@ class PostBase(BaseModel):
     address_street: str
     address_number: str
     price: int
+    swapObject: str
+    rentalPeriod: int
     category_of_bike: str
 
 
@@ -94,6 +95,7 @@ class Reset_password(BaseModel):
     reset_password_token: str
     new_password: str
     confirm_password: str
+
 
 class Forgot_pass(BaseModel):
     email: str

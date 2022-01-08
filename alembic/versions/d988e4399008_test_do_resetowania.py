@@ -17,15 +17,15 @@ depends_on = None
 
 
 def upgrade():
-    op.create_table(
-        'code',
-        sa.Column('id', sa.Integer, primary_key=True, unique=True),
-        sa.Column('email', sa.String(200), nullable=False, unique=True),
-        sa.Column('reset_code', sa.String(200), nullable=False, unique=True),
-        sa.Column('status', sa.String(10), nullable=False),
-        sa.Column('expired_in', sa.DateTime, nullable=False)
-    )
-
+    # op.create_table(
+    #     'code',
+    #     sa.Column('id', sa.Integer, primary_key=True, unique=True),
+    #     sa.Column('email', sa.String(200), nullable=False, unique=True),
+    #     sa.Column('reset_code', sa.String(200), nullable=False, unique=True),
+    #     sa.Column('status', sa.String(10), nullable=False),
+    #     sa.Column('expired_in', sa.DateTime, nullable=False)
+    # )
+    pass
 
 
 

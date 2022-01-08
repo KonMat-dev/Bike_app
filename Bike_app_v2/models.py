@@ -49,7 +49,7 @@ class Post(Base):
     price = Column(Float)
     category_of_bike = Column(String)
 
-    swapObject = Column(Boolean)
+    swapObject = Column(String)
     rentalPeriod = Column(Float)
 
     owner_id = Column(Integer, ForeignKey("user.id"))

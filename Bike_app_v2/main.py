@@ -25,7 +25,6 @@ from starlette.applications import Starlette
 from starlette.routing import Mount
 from starlette.staticfiles import StaticFiles
 
-
 conf = ConnectionConfig(
     MAIL_USERNAME="konrad.matuszewski.98@gmail.com",
     MAIL_PASSWORD="Qaswqasw123",
@@ -40,7 +39,6 @@ conf = ConnectionConfig(
 )
 
 Base.metadata.create_all(bind=engine)
-
 
 app = FastAPI()
 
@@ -106,10 +104,26 @@ async def read_users_me(current_user: models.User = Depends(get_current_user), d
 
 
 @app.post("/users/", tags=['User'])
-def create_user(
-        user: schemas.UserCreate, db: Session = Depends(get_db)
-):
+def create_user(user: schemas.UserCreate, db: Session = Depends(get_db)):
     return crud.create_user(db=db, user=user)
+
+
+@app.post("/add_user_photo/", tags=['User'])
+def add_user_photo(user_id: int, db: Session = Depends(get_db), file: UploadFile = File(...)):
+
+    exists = db.query(models.User).filter(models.User.id == user_id).first() is not None
+    if not exists:
+        return "Zły numer id "
+
+    user = db.query(models.User).filter(models.User.id == user_id).first()
+    with open("photo/" + file.filename, "wb+") as img:
+        shutil.copyfileobj(file.file, img)
+    url = str("photo/" + file.filename)
+
+    user.url = url
+    db.commit()
+    db.refresh(user)
+    return url
 
 
 @app.patch("/update_user/", tags=['User'])
@@ -151,7 +165,7 @@ def create_post(
         address_province: str,
         address_number: str,
         price: Optional[float] = None,
-        swapObject: Optional[bool] = None,
+        swapObject: Optional[str] = None,
         rentalPeriod: Optional[float] = None,
         file: UploadFile = File(...),
         db: Session = Depends(get_db),
@@ -242,10 +256,20 @@ def update(post_id: int, request: schemas.PostBase, db: Session = Depends(get_db
         post.address_street = request.address_street
     if request.address_number != 'string':
         post.address_number = request.address_number
-    if request.price != 'string':
+    if request.price != 0:
         post.price = request.price
+        post.swapObject = None
+        post.rentalPeriod = None
     if request.category_of_bike != 'string':
         post.category_of_bike = request.category_of_bike
+    if request.rentalPeriod != 0:
+        post.rentalPeriod = request.rentalPeriod
+        post.swapObject = None
+        post.price = None
+    if request.swapObject != 'string':
+        post.swapObject = request.swapObject
+        post.price = None
+        post.rentalPeriod = None
     db.commit()
     return "Post updated "
 
@@ -389,7 +413,6 @@ def all_photos(db: Session = Depends(get_db)):
 
 @app.post("/email/{to_mail}")
 async def send_email(to_mail: str, db: Session = Depends(get_db)):
-
     exists = db.query(models.User).filter(models.User.email == to_mail).first() is not None
 
     print(str(exists))
@@ -434,7 +457,6 @@ def code(db: Session = Depends(get_db)):
 
 @app.patch("/reset_password/")
 async def reset(request: schemas.Reset_password, db: Session = Depends(get_db)):
-
     reset_token = crud.check_password(db=db, reset_password_token=request.reset_password_token)
     email_for_this_token = db.query(models.Code).filter(models.Code.reset_code == request.reset_password_token).first()
     if reset_token == None:
