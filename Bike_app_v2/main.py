@@ -20,6 +20,7 @@ from pydantic import EmailStr, BaseModel
 from typing import List
 from fastapi_mail.email_utils import DefaultChecker
 import uuid
+import cloudinary.uploader
 
 from starlette.applications import Starlette
 from starlette.routing import Mount
@@ -116,9 +117,13 @@ def add_user_photo(user_id: int, db: Session = Depends(get_db), file: UploadFile
         return "Zły numer id "
 
     user = db.query(models.User).filter(models.User.id == user_id).first()
-    with open("photo/" + file.filename, "wb+") as img:
-        shutil.copyfileobj(file.file, img)
-    url = str("photo/" + file.filename)
+    # with open("photo/" + file.filename, "wb+") as img:
+    #     shutil.copyfileobj(file.file, img)
+    # url = str("photo/" + file.filename)
+
+    result = cloudinary.uploader.upload(file.file)
+    url = result.get("url")
+
 
     user.url = url
     db.commit()
@@ -176,9 +181,12 @@ def create_post(
     if rentalPeriod == None and price == None and swapObject == None:
         return " Proszę wybrać formę transakcji"
 
-    with open("photo/" + file.filename, "wb+") as img:
-        shutil.copyfileobj(file.file, img)
-    url = str("photo/" + file.filename)
+    # with open("photo/" + file.filename, "wb+") as img:
+    #     shutil.copyfileobj(file.file, img)
+    # url = str("photo/" + file.filename)
+
+    result = cloudinary.uploader.upload(file.file)
+    url = result.get("url")
 
     return crud.create_post(db=db, user_id=user_id, title=title, description=description, url=url,
                             tape_of_service=tape_of_service, category_of_bike=category_of_bike, price=price,
@@ -195,15 +203,19 @@ def add_photos(post_id: int, db: Session = Depends(get_db), current_user: models
     if not exists:
         return "Zły numer id "
 
-    if db.query(models.Comment).filter(and_(
+    if db.query(models.Post).filter(and_(
             models.Post.id == post_id, models.Post.owner_id != current_user.id)).first():
         return "Nie możesz dodawać zdjęć do czyjegoś posta"
 
     for img in files:
-        with open(f'{"photo/" + img.filename}', "wb") as buffer:
-            shutil.copyfileobj(img.file, buffer)
-            url = str("photo/" + img.filename)
-            crud.add_new_photos(db=db, photo_url=url, comment_id=post_id)
+        result = cloudinary.uploader.upload(img.file)
+        url = result.get("url")
+        crud.add_new_photos(db=db, photo_url=url, comment_id=post_id)
+
+        # with open(f'{"photo/" + img.filename}', "wb") as buffer:
+        #     shutil.copyfileobj(img.file, buffer)
+        #     url = str("photo/" + img.filename)
+        #     crud.add_new_photos(db=db, photo_url=url, comment_id=post_id)
 
     return {"file_name": "Good"}
 
@@ -258,18 +270,12 @@ def update(post_id: int, request: schemas.PostBase, db: Session = Depends(get_db
         post.address_number = request.address_number
     if request.price != 0:
         post.price = request.price
-        post.swapObject = None
-        post.rentalPeriod = None
     if request.category_of_bike != 'string':
         post.category_of_bike = request.category_of_bike
     if request.rentalPeriod != 0:
         post.rentalPeriod = request.rentalPeriod
-        post.swapObject = None
-        post.price = None
     if request.swapObject != 'string':
         post.swapObject = request.swapObject
-        post.price = None
-        post.rentalPeriod = None
     db.commit()
     return "Post updated "
 
@@ -312,7 +318,7 @@ def user_details(user_id: int, db: Session = Depends(get_db)):
 def post_filter(title: Optional[str] = None, tape_of_service: Optional[str] = None,
                 category_of_bike: Optional[str] = None, min_price: Optional[float] = None,
                 address_province: Optional[str] = None,
-                swapObject: Optional[bool] = None,
+                swapObject: Optional[str] = None,
                 rentalPeriod: Optional[float] = None,
                 max_price: Optional[float] = None, db: Session = Depends(get_db)):
     posts = crud.search_post(db=db, title=title, tape_of_service=tape_of_service, category_of_bike=category_of_bike,

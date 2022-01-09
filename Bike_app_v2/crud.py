@@ -116,7 +116,7 @@ def search_post(db, title: Optional[str] = None, tape_of_service: Optional[str] 
                 category_of_bike: Optional[str] = None, min_price: Optional[float] = None,
                 max_price: Optional[float] = None,
                 address_province: Optional[float] = None,
-                swapObject: Optional[bool] = None,
+                swapObject: Optional[str] = None,
                 rentalPeriod: Optional[float] = None,
                 ):
     search = db.query(models.Post).distinct(Post.id)
