@@ -45,7 +45,7 @@ app = FastAPI()
 
 app.mount("/photo", StaticFiles(directory="photo"), name="photo")
 
-ACCESS_TOKEN_EXPIRE_MINUTES = 30
+ACCESS_TOKEN_EXPIRE_MINUTES = 60
 oauth2_scheme = OAuth2PasswordBearer(tokenUrl="token")
 
 
@@ -114,7 +114,7 @@ def add_user_photo(user_id: int, db: Session = Depends(get_db), file: UploadFile
 
     exists = db.query(models.User).filter(models.User.id == user_id).first() is not None
     if not exists:
-        return "Zły numer id "
+        raise HTTPException(status_code=404, detail="Item not found")
 
     user = db.query(models.User).filter(models.User.id == user_id).first()
     # with open("photo/" + file.filename, "wb+") as img:
@@ -201,11 +201,11 @@ def add_photos(post_id: int, db: Session = Depends(get_db), current_user: models
     exists = db.query(models.Post).filter(models.Post.id == post_id).first() is not None
 
     if not exists:
-        return "Zły numer id "
+        raise HTTPException(status_code=404, detail="Zły numer ID")
 
     if db.query(models.Post).filter(and_(
             models.Post.id == post_id, models.Post.owner_id != current_user.id)).first():
-        return "Nie możesz dodawać zdjęć do czyjegoś posta"
+        raise HTTPException(status_code=404, detail="Nie możesz dodawać zdjęć do czyjegoś posta")
 
     for img in files:
         result = cloudinary.uploader.upload(img.file)
@@ -230,7 +230,7 @@ def post_detail(post_id: int, db: Session = Depends(get_db)):
     exists = db.query(models.Post).filter(models.Post.id == post_id).first() is not None
 
     if not exists:
-        return "Zły numer id "
+        raise HTTPException(status_code=404, detail="Zły numer ID")
 
     post = crud.get_post(db=db, id=post_id)
     post_photo = crud.posts_photo(db=db, post_id=post_id)
@@ -246,11 +246,11 @@ def update(post_id: int, request: schemas.PostBase, db: Session = Depends(get_db
     exists = db.query(models.Post).filter(models.Post.id == post_id).first() is not None
 
     if not exists:
-        return "Zły numer id "
+        raise HTTPException(status_code=404, detail="Zły numer ID")
 
     if db.query(models.Post).filter(and_(
             models.Post.id == post_id, models.Post.owner_id != current_user.id)).first():
-        return "Nie możesz edytować czyjegoś posta"
+        raise HTTPException(status_code=404, detail="Nie możesz edytować czyjegoś posta")
 
     post = db.query(models.Post).filter(models.Post.id == post_id).first()
 
@@ -290,9 +290,10 @@ def destroy(post_id: int, db: Session = Depends(get_db), current_user: models.Us
 
     if db.query(models.Comment).filter(and_(
             models.Post.id == post_id, models.Post.owner_id != current_user.id)).first():
-        return "Nie możesz usuwać czyjegoś posta"
+        raise HTTPException(status_code=404, detail="Nie możesz usuwać czyjegoś komentarza")
 
-    post = db.query(models.Post).filter(models.Post.id == post_id).delete(synchronize_session=False)
+    post = db.query(models.Post).filter(models.Post.id == post_id).first()
+    db.delete(post)
     db.commit()
     return "Post ha been deleated "
 
@@ -390,12 +391,12 @@ def destroy(comment_id: int, db: Session = Depends(get_db), current_user: models
     print(str(exists))
 
     if not exists:
-        return "Zły numer id "
+        raise HTTPException(status_code=404, detail="Zły numer ID")
 
     if db.query(models.Comment).filter(and_(
             models.Comment.id == comment_id,
             models.Comment.creator_id != current_user.id)).first():
-        return "Nie możesz usuwać czyjegoś komentarza"
+        raise HTTPException(status_code=404, detail="Nie możesz usuwać czyjegoś komentarza")
 
     if db.query(models.Comment).filter(models.Comment.id == comment_id).filter(
             models.Comment.owner_id == current_user.id).first():
