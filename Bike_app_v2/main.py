@@ -27,9 +27,9 @@ from starlette.routing import Mount
 from starlette.staticfiles import StaticFiles
 
 conf = ConnectionConfig(
-    MAIL_USERNAME="konrad.matuszewski.98@gmail.com",
-    MAIL_PASSWORD="Qaswqasw123",
-    MAIL_FROM="konrad.matuszewski.98@gmail.com",
+    MAIL_USERNAME="bizarroapp@gmail.com",
+    MAIL_PASSWORD="Qaswertyuiop!@#",
+    MAIL_FROM="bizarroapp@gmail.com",
     MAIL_PORT=587,
     MAIL_SERVER="smtp.gmail.com",
     MAIL_FROM_NAME="Desired Name",
