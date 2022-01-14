@@ -39,6 +39,8 @@ conf = ConnectionConfig(
     VALIDATE_CERTS=True
 )
 
+
+
 Base.metadata.create_all(bind=engine)
 
 app = FastAPI()
@@ -110,11 +112,17 @@ def create_user(user: schemas.UserCreate, db: Session = Depends(get_db)):
 
 
 @app.post("/add_user_photo/", tags=['User'])
-def add_user_photo(user_id: int, db: Session = Depends(get_db), file: UploadFile = File(...)):
+def add_user_photo(user_id: int, db: Session = Depends(get_db), file: UploadFile = File(...), current_user: models.User = Depends(get_current_user)):
 
     exists = db.query(models.User).filter(models.User.id == user_id).first() is not None
     if not exists:
         raise HTTPException(status_code=404, detail="Item not found")
+
+    exists2 = db.query(models.User).filter(models.User.id == user_id).first()
+
+    if exists2.id != current_user.id:
+        raise HTTPException(status_code=404, detail="Nie mozesz dodawać zdjęć do czyjegoś profilu")
+
 
     user = db.query(models.User).filter(models.User.id == user_id).first()
     # with open("photo/" + file.filename, "wb+") as img:
@@ -134,7 +142,10 @@ def add_user_photo(user_id: int, db: Session = Depends(get_db), file: UploadFile
 @app.patch("/update_user/", tags=['User'])
 async def update_profile(data: schemas.UserUpdate, current_user: models.User = Depends(get_current_user),
                          db: Session = Depends(get_db)):
+
+
     user = db.query(models.User).filter(models.User.id == current_user.id).first()
+
 
     if data.phone != 'string':
         user.phone = data.phone
@@ -286,7 +297,7 @@ def destroy(post_id: int, db: Session = Depends(get_db), current_user: models.Us
     print(str(exists))
 
     if not exists:
-        return "Zły numer id "
+        raise HTTPException(status_code=404, detail="Zły numer id ")
 
     if db.query(models.Comment).filter(and_(
             models.Post.id == post_id, models.Post.owner_id != current_user.id)).first():
@@ -338,7 +349,7 @@ def create_comment(user_id: int, mark: int, comment: schemas.Comments,
                    current_user: models.User = Depends(get_current_user)
                    ):
     if user_id == current_user.id:
-        return "Nie możesz oceniać własnego profilu"
+        raise HTTPException(status_code=404, detail="Nie możesz oceniać własnego profilu")
 
     return crud.create_comment(db=db, creator_id=current_user.id, user_id=user_id, email=current_user.email,
                                comment=comment, mark=mark)
@@ -362,12 +373,13 @@ def update(comment_id: int, request: schemas.CommentsUpdate, db: Session = Depen
     exists = db.query(models.Comment).filter(models.Comment.id == comment_id).first() is not None
 
     if not exists:
-        return "Zły numer id "
+        raise HTTPException(status_code=404, detail="Zły numer id ")
+
 
     if db.query(models.Comment).filter(and_(
             models.Comment.id == comment_id,
             models.Comment.creator_id != current_user.id)).first():
-        return "Nie możesz edytować czyjegoś komentarza"
+        raise HTTPException(status_code=404, detail="Nie możesz edytować czyjegoś komentarza")
 
     comment = db.query(models.Comment).filter(models.Comment.id == comment_id).first()
 
@@ -379,7 +391,8 @@ def update(comment_id: int, request: schemas.CommentsUpdate, db: Session = Depen
         if request.mark >= 0 and request.mark <= 5:
             comment.mark = request.mark
         else:
-            return 'Ocena moze być z przedziału 0 do 5 '
+            raise HTTPException(status_code=404, detail='Ocena moze być z przedziału 0 do 5 ')
+
 
     db.commit()
     return "Comment updated "
@@ -400,7 +413,7 @@ def destroy(comment_id: int, db: Session = Depends(get_db), current_user: models
 
     if db.query(models.Comment).filter(models.Comment.id == comment_id).filter(
             models.Comment.owner_id == current_user.id).first():
-        return "Nie możesz usuwać czyjegoś komentarza"
+        raise HTTPException(status_code=404, detail="Nie możesz usuwać czyjegoś komentarza")
 
     post = db.query(models.Comment).filter(models.Comment.id == comment_id).delete(synchronize_session=False)
     db.commit()
@@ -425,7 +438,7 @@ async def send_email(to_mail: str, db: Session = Depends(get_db)):
     print(str(exists))
 
     if exists == False:
-        return "Taki email nie istnieje w naszej bazie danych "
+        raise HTTPException(status_code=404, detail="Taki email nie istnieje w naszej bazie danych ")
 
     user_id_by_email = db.query(models.User).filter(models.User.email == to_mail).first()
 
@@ -435,7 +448,7 @@ async def send_email(to_mail: str, db: Session = Depends(get_db)):
 
     crud.create_reset_code(db, to_mail, reset_code)
 
-    html = f"""
+    html = (f"""
     <p></p>
     <p>Przypomnienie twojego hasla</p>
     <p>Uzytkowniku {user.username}<p>
@@ -443,7 +456,7 @@ async def send_email(to_mail: str, db: Session = Depends(get_db)):
     <p> Kod resetujący hasło: {reset_code} </p>
 
     <br>test<br>
-    """
+    """)
 
     message = MessageSchema(
         subject="Przypomninie hasla",
@@ -454,7 +467,7 @@ async def send_email(to_mail: str, db: Session = Depends(get_db)):
 
     fm = FastMail(conf)
     await fm.send_message(message)
-    return {'Status': 'Chyba poszlo', 'Reset coede': reset_code}
+    return {'Wiadomość została wysłana na adres': to_mail}
 
 
 @app.post("/code/")
@@ -467,13 +480,13 @@ async def reset(request: schemas.Reset_password, db: Session = Depends(get_db)):
     reset_token = crud.check_password(db=db, reset_password_token=request.reset_password_token)
     email_for_this_token = db.query(models.Code).filter(models.Code.reset_code == request.reset_password_token).first()
     if reset_token == None:
-        return ('Error')
+        raise HTTPException(status_code=404, detail=" Error")
 
     if request.new_password != request.confirm_password:
-        return ("Hasła są różne")
+        raise HTTPException(status_code=404, detail="Hasła są rózne")
 
     # forgot_pass = schemas.Forgot_pass(reset_token)
     new_hash_pas = crud.get_password_hash(request.new_password)
     crud.reset_password(db=db, new_hash_pas=new_hash_pas, email=email_for_this_token.email)
-
+    crud.make_code_revised(db=db,reset_password_token=request.reset_password_token,email=email_for_this_token)
     return 'Sukces'

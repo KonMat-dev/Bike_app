@@ -1,5 +1,6 @@
 from fastapi.security import OAuth2PasswordBearer
 
+from fastapi import  HTTPException
 from sqlalchemy.orm import Session
 from datetime import datetime, timedelta
 from typing import Optional
@@ -206,26 +207,34 @@ def create_reset_code(db: Session, email: str, reset_code: str):
 
 
 def check_password(db: Session, reset_password_token: str):
-    sql_query = db.query(models.Code).filter(
-        models.Code.status == 1,
-        models.Code.reset_code == reset_password_token  # TODO ważnośc tokenu
-    ).first()
+    sql_query = db.query(models.Code).\
+        filter(models.Code.reset_code == reset_password_token). \
+        filter(models.Code.status == "1") \
+        .first()
+
+    sql_query is not None
+    if not sql_query:
+        raise HTTPException(status_code=404, detail="Token niepoprawny lub wygasł")
+
     return sql_query
+
 
 
 def reset_password(db: Session, new_hash_pas: str, email: str):
     user = db.query(models.User).filter(models.User.email == email).first()
 
-    print('request email', email)
-    print('email', user.email)
-    print('nowe haslo', str(new_hash_pas))
-    print('stare haslo', str(user.hashed_password))
-    print('username', str(user.username))
-    print('city', str(user.address_city))
-
     user.hashed_password = new_hash_pas
-    user.address_city = "test dodania adresu"
 
     db.commit()
     db.refresh(user)
     return user
+
+
+def make_code_revised(db: Session, reset_password_token: str, email: str):
+    make_pass = db.query(models.Code).filter(models.Code.reset_code == reset_password_token).first()
+    make_pass.status = 0
+
+    db.commit()
+    db.refresh(make_pass)
+
+    return make_pass
